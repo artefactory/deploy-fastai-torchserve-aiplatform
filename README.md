@@ -1,0 +1,1 @@
+# deploy-fastai-torchserve-aiplatform
