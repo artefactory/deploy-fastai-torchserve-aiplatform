@@ -1,5 +1,3 @@
-# deploy-fastai-torchserve-aiplatform
-
 # Deploy FastAI Trained PyTorch Model in TorchServe and Host in GCP AI Platform Prediction
 
 - [Deploy FastAI Trained PyTorch Model in TorchServe and Host in GCP AI Platform Prediction](#deploy-fastai-torchserve-aiplatform)
@@ -60,13 +58,9 @@ First, restore the FastAI learner from the export pickle at the last Section, an
 from fastai.text import load_learner
 import torch
 
-
 learn = load_learner("/home/ubuntu/.fastai/data/camvid_tiny/fastai_cls.pkl")
 torch.save(learn.model.state_dict(), "fastai_cls_weights.pth")
 ```
-
-
-
 ```python
 text = "Hello, this is a test."
 pred_fastai = learn.predict(text)
@@ -120,7 +114,7 @@ tensor([   2,    5,  510, 3853, 2775,   13,   10,  189,   39, 2079])
 
 inputs = example_processed.resize(1, len(example_processed))
 outputs = model_torch_rep.forward(inputs)[0]
-preds = torch.sigmoid(outputs[0])
+preds = torch.sigmoid(outputs) #You can use any activation function you need
 >>>
 tensor([[0.0010, 0.9919, 0.0043]], grad_fn=<SigmoidBackward>)
 ```
