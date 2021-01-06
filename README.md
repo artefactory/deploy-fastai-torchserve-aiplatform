@@ -6,7 +6,6 @@
   - [Introduction](#introduction)
   - [Getting Started with A FastAI Model](#getting-started-with-a-fastai-model)
     - [Installation](#installation)
-    - [Modelling](#modelling)
   - [PyTorch Transfer Modeling from FastAI](#pytorch-transfer-modeling-from-fastai)
     - [Export Model Weights from FastAI](#export-model-weights-from-fastai)
     - [PyTorch Model from FastAI Source Code](#pytorch-model-from-fastai-source-code)
@@ -53,14 +52,6 @@ The first step is to install FastAI package, which is covered in its [Github](ht
 
 For other installation options, please refer to the FastAI documentation.
 
-### Modelling
-
-TO BE COMPLETED
-
-## PyTorch Transfer Modeling from FastAI
-
-In this section we build a pure PyTorch model and transfer the model weights from FastAI. The following materials are inspired by "[Practical-Deep-Learning-for-Coders-2.0](https://github.com/muellerzr/Practical-Deep-Learning-for-Coders-2.0/blob/master/Computer%20Vision/06_Hybridizing_Models.ipynb)" by Zachary Mueller *et al*.
-
 ### Export Model Weights from FastAI
 
 First, restore the FastAI learner from the export pickle at the last Section, and save its model weights with PyTorch.
@@ -70,15 +61,11 @@ from fastai.text import load_learner
 import torch
 
 
-learn = load_learner("/home/ubuntu/.fastai/data/camvid_tiny/fastai_cls.pkl") #TODO: change model path
+learn = load_learner("/home/ubuntu/.fastai/data/camvid_tiny/fastai_cls.pkl")
 torch.save(learn.model.state_dict(), "fastai_cls_weights.pth")
 ```
 
-It's also straightforward to obtain the FastAI prediction on a sample text.
 
-> "2013.04 - 'Streetview of a small neighborhood', with residential buildings, Amsterdam city photo by Fons Heijnsbroek, The Netherlands" by Amsterdam free photos & pictures of the Dutch city is marked under CC0 1.0. To view the terms, visit https://creativecommons.org/licenses/cc0/1.0/
-
-![sample_image](sample/street_view_of_a_small_neighborhood.png)
 
 ```python
 text = "Hello, this is a test."
@@ -218,10 +205,17 @@ In this section we deploy the FastAI trained Scene Segmentation PyTorch model wi
 
 ### Getting Started with GCP AI Platform Prediction
 
+There are 3 steps to host a model on AI Platform Prediction with TorchServe:
 
-
-
-
+1. Create a new model on AI Platform
+```bash
+gcloud beta ai-platform models create $MODEL_NAME --regions=$REGION
+```
+2. Build a docker image of the torchserve API package and push it to a container registry following the [custom container requirements](https://cloud.google.com/ai-platform/prediction/docs/custom-container-requirements)
+3. Create AI Platform version model using the docker image of the torchserve API package.
+```bash
+gcloud beta ai-platform versions create $VERSION_NAME  --region=$REGION --model=$MODEL_NAME   --machine-type=n1-standard-4 --image=$DOCKER_IMAGE_PATH  --ports=$PORT   --health-route=$HEALTH_ROUTE   --predict-route=$PREDICT_ROUTE
+```
 
 
 ## Conclusion
