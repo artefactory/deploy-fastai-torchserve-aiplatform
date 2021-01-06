@@ -62,13 +62,12 @@ learn = load_learner("/home/ubuntu/.fastai/data/camvid_tiny/fastai_cls.pkl")
 torch.save(learn.model.state_dict(), "fastai_cls_weights.pth")
 ```
 ```python
-text = "Hello, this is a test."
+text = "This was a very good movie"
 pred_fastai = learn.predict(text)
 pred_fastai
 >>>
-(MultiCategory tensor([0., 1., 0.]),
- tensor([0., 1., 0.]),
- tensor([0.0010, 0.9919, 0.0043]))
+(Category tensor(1), tensor(1), tensor([0.0036, 0.9964]))
+
 ```
 
 ### PyTorch Model from FastAI
@@ -110,13 +109,13 @@ processor = SPProcessor(
 
 example_processed = torch.LongTensor(processor.process_one(example))
 >>>
-tensor([   2,    5,  510, 3853, 2775,   13,   10,  189,   39, 2079])
+tensor([ 4,  7, 26, 29, 16, 72, 69, 31])
 
 inputs = example_processed.resize(1, len(example_processed))
 outputs = model_torch_rep.forward(inputs)[0]
-preds = torch.sigmoid(outputs) #You can use any activation function you need
+preds = torch.softmax(outputs, dim=-1) #You can use any activation function you need
 >>>
-tensor([[0.0010, 0.9919, 0.0043]], grad_fn=<SigmoidBackward>)
+tensor([[0.0036, 0.9964]], grad_fn=<SoftmaxBackward>)
 ```
 
 Here we can see the difference: in FastAI model `fastai_cls.pkl`, it packages all the steps including the data transformation, padding, etc.; but in `fastai_cls_weights.pth` it has only the pure weights and we have to manually re-define the data transformation procedures among others and make sure they are consistent with the training step.
@@ -178,11 +177,10 @@ content-length: 131101
 x-request-id: 96c25cb1-99c2-459e-9165-aa5ef9e3a439
 
 {
-  "Categories": "other",
+  "Categories": "1",
   "Tensor": [
-    0.21803806722164154,
-    0.845626175403595,
-    6.672326708212495e-05
+    0.0036,
+    0.9964
   ]
 }
 
