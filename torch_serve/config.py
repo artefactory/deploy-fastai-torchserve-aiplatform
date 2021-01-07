@@ -15,7 +15,4 @@ CLASSES = [0, 1]
 # TO GET CLASSES from fastai learner > learner.data.classes
 
 VOCAB_SIZE = 15000
-
 # TO GET VOCAB_SIZE from fastai learner > len(learn.data.vocab.itos)
-
-THRESHOLD_PREDICTION = 0.5

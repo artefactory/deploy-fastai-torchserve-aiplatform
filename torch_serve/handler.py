@@ -8,8 +8,7 @@ from fastai.text.data import SPProcessor
 from fastai.text.learner import get_text_classifier
 from fastai.text.models.awd_lstm import AWD_LSTM
 
-from config import (CONFIG_DICT, CLASSES, THRESHOLD_PREDICTION,
-                    VOCAB_SIZE)
+from config import (CONFIG_DICT, CLASSES, VOCAB_SIZE)
 
 sys.path.insert(0, os.path.abspath('.'))
 
@@ -93,7 +92,7 @@ class TextClassifierHandler:
         logger.debug(f"x_tensor : {x_tensor}")
         return x_tensor
 
-    def inference(self, txt, activation=(lambda x: torch.softmax(x, dim=-1)):
+    def inference(self, txt, activation=(lambda x: torch.softmax(x, dim=-1))):
         """
         Predict the chip stack mask of an image using a trained deep learning model.
         """
@@ -104,18 +103,14 @@ class TextClassifierHandler:
         logger.debug(outputs.shape)
         return activation(outputs)
 
-    def postprocess(self, inference_result):
+    @staticmethod
+    def postprocess(inference_result):
         result = []
         for tensor in inference_result:
-            class_assigned = ",".join(
-                [
-                    CLASSES[label]
-                    for label in range(len(CLASSES)) if tensor[label] > THRESHOLD_PREDICTION
-                ]
-            )
+            class_assigned = CLASSES[tensor.argmax()]
             result.append(
                 {
-                    "Categories": class_assigned,
+                    "Categories": str(class_assigned),
                     "Tensor": tensor.detach().numpy().astype(np.float32).tolist()
                 }
             )
