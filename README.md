@@ -32,7 +32,7 @@ Meanwhile, GCP AI Platform Prediction has been a fully managed  [cost-effective]
 In this repository we demonstrate how to deploy a FastAI trained PyTorch model in TorchServe eager mode and host it in AI Platform Prediction.
 
 
-## Installation
+## 1 - Installation
 
 The first step is to install FastAI package, which is covered in its [Github](https://github.com/fastai/fastai) repository.
 
@@ -46,6 +46,8 @@ The first step is to install FastAI package, which is covered in its [Github](ht
 > ```
 
 For other installation options, please refer to the FastAI documentation.
+
+## 2 - Reusing fastai model in pytorch
 
 ### Export Model Weights from FastAI
 
@@ -118,7 +120,7 @@ tensor([[0.0036, 0.9964]], grad_fn=<SoftmaxBackward>)
 Here we can see the difference: in FastAI model `fastai_cls.pkl`, it packages all the steps including the data transformation, padding, etc.; but in `fastai_cls_weights.pth` it has only the pure weights and we have to manually re-define the data transformation procedures among others and make sure they are consistent with the training step.
 
 
-## Deployment to TorchServe
+## 3-  Deployment to TorchServe
 
 In this section we deploy the PyTorch model to TorchServe. For installation, please refer to TorchServe [Github](https://github.com/pytorch/serve) Repository.
 
@@ -188,7 +190,7 @@ sys     0m0.039s
 
 The first call would have longer latency due to model weights loading defined in `initialize`, but this will be mitigated from the second call onward.
 
-## Deployment to AI Platform Prediction
+## 4- Deployment to AI Platform Prediction
 
 In this section we deploy the FastAI trained Scene Segmentation PyTorch model with TorchServe in GCP AI Platform Prediction using customized Docker image. or more details about GCP AI Platform Prediction routines using custom containers please refer to [here](https://cloud.google.com/ai-platform/prediction/docs/use-custom-container).
 
@@ -217,7 +219,7 @@ gcloud beta ai-platform versions create $VERSION_NAME  --region=$REGION --model=
 
 ## Conclusion
 
-This repository presented an end-to-end demonstration of deploying FastAI trained PyTorch models on TorchServe eager mode and host in GCP AI Platform Prediction. You can use this repository as a template to deploy your own FastAI models. This approach eliminates the self-maintaining effort to build and manage a customized inference server, which helps you to speed up the process from training a cutting-edge deep learning model to its online application in real-world at scale.
+This repository presented an end-to-end demonstration of deploying a FastAI text classifier model on GCP AI Platform Prediction. It allows a user to serve a fastai model without going through the self-maintaining effort to build and manage a customized inference server. This repository was inspired by another project that aimed to deploy a fastai image classifier on AWS SageMaker Inference Endpoint [here](https://github.com/aws-samples/amazon-sagemaker-endpoint-deployment-of-fastai-model-with-torchserve).
 
 If you have questions please create an issue or submit Pull Request on the [GitHub](https://github.com/artefactory/deploy-fastai-torchserve-aiplatform) repository.
 
