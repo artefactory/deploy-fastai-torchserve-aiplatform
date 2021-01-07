@@ -23,19 +23,16 @@
 
 ## Introduction
 
-Over the past few years, [FastAI](https://www.fast.ai/) has become one of the most cutting-edge open-source deep learning framework and the go-to choice for many machine learning use cases based on [PyTorch](https://pytorch.org/). It not only democratized deep learning and made it approachable to the general audiences, but also set as a role model on how scientific software shall be engineered, especially in Python programming. Currently, however, to deploy a FastAI model to production environment often involves setting up and self-maintaining a customized inference solution, e.g. with [Flask](https://flask.palletsprojects.com/en/1.1.x/), which is time-consuming and distracting to manage and maintain issues like security, load balancing, services orchestration, etc.
+Over the past few years, NLP has had a huge hype of transfer learning. [FastAI](https://www.fast.ai/) is a deep learning library which provides practitioners with high-level components that can quickly and easily provide state-of-the-art results in standard deep learning domains.. It has become one of the most cutting-edge open-source deep learning framework and the go-to choice for many machine learning use cases based on [PyTorch](https://pytorch.org/).
 
-Recently, AWS developed *[TorchServe](https://github.com/pytorch/serve)* in partnership with Facebook, which is a flexible and easy-to-use open-source tool for serving PyTorch models. It removes the heavy lifting of deploying and serving PyTorch models with Kubernetes, and AWS and Facebook will maintain and continue contributing to TorchServe along with the broader PyTorch community. With TorchServe, many features are out-of-the-box and they provide full flexibility of deploying trained PyTorch models at scale so that a trained model can go to production deployment with few extra lines of code.
+Recently, AWS developed *[TorchServe](https://github.com/pytorch/serve)* in partnership with Facebook. TorchServe makes it easy to deploy PyTorch models at scale in production environments. It removes the heavy lifting of developing your own client server architecture.
 
-Meanwhile, GCP AI Platform Prediction has been a fully managed service that allows users to make real-time inferences via a REST API, and save Data Scientists and Machine Learning Engineers from managing their own server instances, load balancing, fault-tolerance, auto-scaling and model monitoring, etc. [cost-effective](https://cloud.google.com/ai-platform/prediction/pricing).
+Meanwhile, GCP AI Platform Prediction has been a fully managed  [cost-effective](https://cloud.google.com/ai-platform/prediction/pricing) service that allows users to make real-time inferences via a REST API, and save Data Scientists and Machine Learning Engineers from managing their own server instances.
 
 In this repository we demonstrate how to deploy a FastAI trained PyTorch model in TorchServe eager mode and host it in AI Platform Prediction.
 
-## Getting Started with A FastAI Model
 
-In this section we train a FastAI model that can solve a real-world problem with performance meeting the use-case specification. As an example, we focus on a **Scene Segmentation** use case from self-driving car.
-
-### Installation
+## Installation
 
 The first step is to install FastAI package, which is covered in its [Github](https://github.com/fastai/fastai) repository.
 
@@ -58,7 +55,7 @@ First, restore the FastAI learner from the export pickle at the last Section, an
 from fastai.text import load_learner
 import torch
 
-learn = load_learner("/home/ubuntu/.fastai/data/camvid_tiny/fastai_cls.pkl")
+learn = load_learner("fastai_cls.pkl")
 torch.save(learn.model.state_dict(), "fastai_cls_weights.pth")
 ```
 ```python
@@ -87,13 +84,13 @@ The important thing here is that get_text_classifier fastai function outputs a t
 Now initialize the PyTorch model, load the saved model weights, and transfer that weights to the PyTorch model.
 
 ```python
-model_torch_rep = get_text_classifier(AWD_LSTM, vocab_sz, n_class, config=config)
+model_torch = get_text_classifier(AWD_LSTM, vocab_sz, n_class, config=config)
 state = torch.load("fastai_cls_weights.pth")
-model_torch_rep.load_state_dict(state)
-model_torch_rep.eval()
+model_torch.load_state_dict(state)
+model_torch.eval()
 ```
 
-If take one sample text, transform it, and pass it to the `model_torch_rep`, we shall get an identical prediction result as FastAI's.
+If we take one sample text, transform it, and pass it to the `model_torch`, we shall get an identical prediction result as FastAI's.
 
 In my example, I used sentencepiece processor to tokenize my text inputs. Here are the preprocessing steps :
 
@@ -104,15 +101,15 @@ from fastai.text.data import SPProcessor
 example = "Hello, this is a test."
 
 processor = SPProcessor(
-    sp_model=os.path.join(SPM_FOLDER, "spm.model"),
-    sp_vocab=os.path.join(SPM_FOLDER, "spm.vocab"))
+    sp_model="spm.model",
+    sp_vocab="spm.vocab")
 
 example_processed = torch.LongTensor(processor.process_one(example))
 >>>
 tensor([ 4,  7, 26, 29, 16, 72, 69, 31])
 
 inputs = example_processed.resize(1, len(example_processed))
-outputs = model_torch_rep.forward(inputs)[0]
+outputs = model_torch.forward(inputs)[0]
 preds = torch.softmax(outputs, dim=-1) #You can use any activation function you need
 >>>
 tensor([[0.0036, 0.9964]], grad_fn=<SoftmaxBackward>)
@@ -199,11 +196,19 @@ In this section we deploy the FastAI trained Scene Segmentation PyTorch model wi
 
 There are 3 steps to host a model on AI Platform Prediction with TorchServe:
 
-1. Create a new model on AI Platform
+1. Create a new model on AI Platform. Be careful to choose a model with a regional endpoint to have the option to use a custom container.
 ```bash
-gcloud beta ai-platform models create $MODEL_NAME --regions=$REGION
+gcloud beta ai-platform models create $MODEL_NAME \
+  --region=$REGION \
+  --enable-logging \
+  --enable-console-logging
 ```
-2. Build a docker image of the torchserve API package and push it to a container registry following the [custom container requirements](https://cloud.google.com/ai-platform/prediction/docs/custom-container-requirements)
+2. Build a docker image of the torchserve API package and push it to a container registry following the [custom container requirements](https://cloud.google.com/ai-platform/prediction/docs/custom-container-requirements). Be careful to create a regional artifact registry repository if it's doesn't already exist
+```bash
+gcloud beta artifacts repositories create $ARTIFACT_REGISTRY_NAME \
+ --repository-format=docker \
+ --location=$REGION
+ ```
 3. Create AI Platform version model using the docker image of the torchserve API package.
 ```bash
 gcloud beta ai-platform versions create $VERSION_NAME  --region=$REGION --model=$MODEL_NAME   --machine-type=n1-standard-4 --image=$DOCKER_IMAGE_PATH  --ports=$PORT   --health-route=$HEALTH_ROUTE   --predict-route=$PREDICT_ROUTE
