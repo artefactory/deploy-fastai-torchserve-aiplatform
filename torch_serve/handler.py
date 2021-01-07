@@ -73,9 +73,6 @@ class TextClassifierHandler:
         preprocessor = SPProcessor(
             sp_model="spm.model",
             sp_vocab="spm.vocab")
-        # TODO: handle english case that does not use sentencepiece
-        # TODO: for english : TokenizeProcessor followed by NumericalizeProcessor
-
         self.preprocessor = preprocessor
 
     def preprocess(self, data):
@@ -96,14 +93,14 @@ class TextClassifierHandler:
         logger.debug(f"x_tensor : {x_tensor}")
         return x_tensor
 
-    def inference(self, txt, activation=torch.sigmoid):
+    def inference(self, txt, activation=(lambda x: torch.softmax(x, dim=-1)):
         """
         Predict the chip stack mask of an image using a trained deep learning model.
         """
         logger.info(f"Device on inference is: {self.device}")
         self.model.eval()
         inputs = torch.autograd.Variable(txt).to(self.device)
-        outputs = self.model.forward(inputs)[0]  # TODO: check how to check gradient Adam
+        outputs = self.model.forward(inputs)[0]
         logger.debug(outputs.shape)
         return activation(outputs)
 
