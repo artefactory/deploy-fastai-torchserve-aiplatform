@@ -15,15 +15,15 @@ COPY requirements.txt /home/model-server/
 RUN pip install --upgrade pip
 RUN pip install -r /home/model-server/requirements.txt
 
-COPY torch_serve/handler.py torch_serve/config.py /home/model-server/
+COPY torch_serve/text/handler.py torch_serve/text/config.py /home/model-server/
 
-COPY model/fastai_cls_weights.pth model/spm/spm.model model/spm/spm.vocab /home/model-server/
+COPY model/image/fastai_cls_weights.pth /home/model-server/
 
 RUN torch-model-archiver \
   --model-name=fastai_model \
   --version=1.0 \
   --serialized-file=/home/model-server/fastai_cls_weights.pth \
-  --extra-files=/home/model-server/spm.model,/home/model-server/spm.vocab,/home/model-server/config.py \
+  --extra-files=/home/model-server/config.py \
   --handler=/home/model-server/handler.py \
   --export-path=/home/model-server/model-store/
 
