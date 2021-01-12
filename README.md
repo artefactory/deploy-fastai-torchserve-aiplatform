@@ -86,7 +86,15 @@ The important thing here is that get_text_classifier fastai function outputs a t
 Now initialize the PyTorch model, load the saved model weights, and transfer that weights to the PyTorch model.
 
 ```python
-model_torch = get_text_classifier(AWD_LSTM, vocab_sz, n_class, config=config)
+from fastai.text.learner import _get_text_vocab, get_c
+vocab = _get_text_vocab(learn_c.dls.train_ds)
+vocab_sz = len(vocab)
+n_classes = get_c(learn_c.dls.train_ds)
+config = awd_lstm_clas_config.copy()
+```
+
+```python
+model_torch = get_text_classifier(AWD_LSTM, vocab_sz, n_classes, config=config)
 state = torch.load("fastai_cls_weights.pth")
 model_torch.load_state_dict(state)
 model_torch.eval()
@@ -102,11 +110,12 @@ from fastai.text.data import SPProcessor
 
 example = "Hello, this is a test."
 
-processor = SPProcessor(
-    sp_model="spm.model",
-    sp_vocab="spm.vocab")
+tokenizer = Tokenizer(
+    tok=SpacyTokenizer("en")
+)
+numericalizer = Numericalize(vocab=vocab)
 
-example_processed = torch.LongTensor(processor.process_one(example))
+example_processed = numericalizer(tokenizer(example))
 >>>
 tensor([ 4,  7, 26, 29, 16, 72, 69, 31])
 
@@ -133,7 +142,6 @@ Overall, there are mainly 3 steps to use TorchServe:
 In order to archive the model, at least 2 files are needed in our case:
 
 1. PyTorch model weights `fastai_cls_weights.pth`.
-2. Preprocessing files `spm.model` and `spm.vocab`..
 2. TorchServe custom handler.
 
 ### Custom Handler
@@ -150,8 +158,8 @@ Step 1: Archive the model PyTorch
 >>> torch-model-archiver \
   --model-name=fastai_model \
   --version=1.0 \
-  --serialized-file=/home/model-server/fastai_cls_weights.pth \
-  --extra-files=/home/model-server/spm.model,/home/model-server/spm.vocab
+  --serialized-file=/home/model-server/fastai_v2_cls_weights.pth \
+  --extra-files=/home/model-server/config.py,/home/model-server/vocab.json
   --handler=/home/model-server/handler.py \
   --export-path=/home/model-server/model-store/
 ```

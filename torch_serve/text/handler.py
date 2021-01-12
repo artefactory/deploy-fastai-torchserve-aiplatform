@@ -4,11 +4,11 @@ import sys
 
 import numpy as np
 import torch
-from fastai.text.data import SPProcessor
-from fastai.text.learner import get_text_classifier
-from fastai.text.models.awd_lstm import AWD_LSTM
-
-from config import (CONFIG_DICT, CLASSES, VOCAB_SIZE)
+from fastai.text.core import Tokenizer, SpacyTokenizer
+from fastai.text.data import Numericalize
+from fastai.text.models.core import get_text_classifier
+from fastai.text.all import AWD_LSTM
+from config import (CONFIG_DICT, CLASSES, VOCAB, VOCAB_SIZE)
 
 sys.path.insert(0, os.path.abspath('.'))
 
@@ -69,9 +69,11 @@ class TextClassifierHandler:
         self.initialized = True
 
     def _load_preprocessor(self):
-        preprocessor = SPProcessor(
-            sp_model="spm.model",
-            sp_vocab="spm.vocab")
+        tokenizer = Tokenizer(
+            tok=SpacyTokenizer("en")
+            )
+        numericalizer = Numericalize(vocab=VOCAB)
+        preprocessor = lambda x : numericalizer(tokenizer(x))
         self.preprocessor = preprocessor
 
     def preprocess(self, data):
@@ -79,17 +81,17 @@ class TextClassifierHandler:
         text = data[0].get("data")
         if text is None:
             text = data[0].get("body")
-        logger.debug(f"text : {text} of type {type(text)}")
+        logger.info(f"text : {text} of type {type(text)}")
         if not isinstance(text, list):
             text = [text]
-        logger.debug(f"text : {text}")
-        text_preprocessed = [self.preprocessor.process_one(el) for el in text]
+        logger.info(f"text : {text}")
+        text_preprocessed = [self.preprocessor(el) for el in text]
         max_len = find_max_list(text_preprocessed)
         text_preprocessed = [
             np.pad(el, (0, max_len - len(el)), 'constant', constant_values=(None, 0))
             for el in text_preprocessed]
         x_tensor = torch.LongTensor(text_preprocessed)
-        logger.debug(f"x_tensor : {x_tensor}")
+        logger.info(f"x_tensor : {x_tensor}")
         return x_tensor
 
     def inference(self, txt, activation=(lambda x: torch.softmax(x, dim=-1))):
@@ -99,7 +101,9 @@ class TextClassifierHandler:
         logger.info(f"Device on inference is: {self.device}")
         self.model.eval()
         inputs = torch.autograd.Variable(txt).to(self.device)
-        outputs = self.model.forward(inputs)[0]
+        logger.info(f"inputs: {inputs}")
+        outputs = self.model(inputs)[0]
+        logger.info(f"outputs: {outputs}")
         logger.debug(outputs.shape)
         return activation(outputs)
 
