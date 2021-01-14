@@ -13,7 +13,6 @@ CONFIG_DICT = {
     'weight_p': 0.5}
 
 CLASSES = [0, 1]
-# TO GET CLASSES from fastai learner > learner.data.classes
 
 with open("vocab.json", "r") as f:
     VOCAB = json.load(f)

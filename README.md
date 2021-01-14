@@ -53,60 +53,87 @@ For other installation options, please refer to the FastAI documentation.
 
 First, restore the FastAI learner from the export pickle at the last Section, and save its model weights with PyTorch.
 
+#### Text version
 ```python
 from fastai.text import load_learner
+from fastai.text.learner import _get_text_vocab, get_c
+
 import torch
+
+VOCABZ_SZ = len(_get_text_vocab(dls)) #dls is the dataloader you used for training
+N_CLASSES = get_c(dls)
+CONFIG = awd_lstm_clas_config.copy()
 
 learn = load_learner("fastai_cls.pkl")
 torch.save(learn.model.state_dict(), "fastai_cls_weights.pth")
-```
-```python
+
 text = "This was a very good movie"
 pred_fastai = learn.predict(text)
 pred_fastai
 >>>
 (Category tensor(1), tensor(1), tensor([0.0036, 0.9964]))
-
 ```
 
+#### Image version
+```python
+from fastai.vision.all import get_c
+
+IMAGE_SIZE = dls.one_batch()[0].shape[-2:] #dls is the dataloader you used for training
+N_CLASSES = get_c(dls)
+
+image_path = "street_view_of_a_small_neighborhood.png"
+pred_fastai = learn.predict(image_path)
+pred_fastai[0].numpy()
+>>>
+array([[26, 26, 26, ...,  4,  4,  4],
+       [26, 26, 26, ...,  4,  4,  4],
+       [26, 26, 26, ...,  4,  4,  4],
+       ...,
+       [17, 17, 17, ..., 30, 30, 30],
+       [17, 17, 17, ..., 30, 30, 30],
+       [17, 17, 17, ..., 30, 30, 30]])
+```
 ### PyTorch Model from FastAI
 
 Next, we need to define the model in pure PyTorch. In [Jupyter](https://jupyter.org/) notebook, one can investigate the FastAI source code by adding `??` in front of a function name. 
-
+#### Text version
 ```python
-from fastai.text.learner import get_text_classifier
+from fastai.text.models.core import get_text_classifier
+from fastai.text.all import AWD_LSTM
 
-torch_pure_model = get_text_classifier(AWD_LSTM, vocab_sz, n_class, config=config)
+model_torch = get_text_classifier(AWD_LSTM, VOCABZ_SZ, N_CLASSES, config=CONFIG)
 ```
 
 The important thing here is that get_text_classifier fastai function outputs a torch.nn.modules.module.Module which therefore is a pure PyTorch object.
 
+#### Image version
+
+```python
+from fastai.vision.learner import create_unet_model
+from fastai.vision.models import resnet50
+
+
+model_torch = create_unet_model(resnet50, N_CLASSES, IMAGE_SIZE)
+```
 ### Weights Transfer
 
 Now initialize the PyTorch model, load the saved model weights, and transfer that weights to the PyTorch model.
 
 ```python
-from fastai.text.learner import _get_text_vocab, get_c
-vocab = _get_text_vocab(learn_c.dls.train_ds)
-vocab_sz = len(vocab)
-n_classes = get_c(learn_c.dls.train_ds)
-config = awd_lstm_clas_config.copy()
-```
-
-```python
-model_torch = get_text_classifier(AWD_LSTM, vocab_sz, n_classes, config=config)
 state = torch.load("fastai_cls_weights.pth")
 model_torch.load_state_dict(state)
 model_torch.eval()
 ```
 
-If we take one sample text, transform it, and pass it to the `model_torch`, we shall get an identical prediction result as FastAI's.
+If we take one sample, transform it, and pass it to the `model_torch`, we shall get an identical prediction result as FastAI's.
 
-In my example, I used sentencepiece processor to tokenize my text inputs. Here are the preprocessing steps :
+### Preprocessing inputs
 
+#### Text version
 ```python
 import torch
-from fastai.text.data import SPProcessor
+from fastai.text.core import Tokenizer, SpacyTokenizer
+from fastai.text.data import Numericalize
 
 example = "Hello, this is a test."
 
@@ -125,9 +152,42 @@ preds = torch.softmax(outputs, dim=-1) #You can use any activation function you 
 >>>
 tensor([[0.0036, 0.9964]], grad_fn=<SoftmaxBackward>)
 ```
+#### Image version
 
-Here we can see the difference: in FastAI model `fastai_cls.pkl`, it packages all the steps including the data transformation, padding, etc.; but in `fastai_cls_weights.pth` it has only the pure weights and we have to manually re-define the data transformation procedures among others and make sure they are consistent with the training step.
+```python
+from torchvision import transforms
+from PIL import Image
+import numpy as np
 
+image_path = "street_view_of_a_small_neighborhood.png"
+
+image = Image.open(image_path).convert("RGB")
+image_tfm = transforms.Compose(
+    [
+        transforms.Resize((96, 128)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
+x = image_tfm(image).unsqueeze_(0)
+
+# inference on CPU
+raw_out = model_torch_rep(x)
+raw_out.shape
+>>> torch.Size([1, 32, 96, 128])
+
+pred_res = raw_out[0].argmax(dim=0).numpy().astype(np.uint8)
+pred_res
+>>>
+array([[26, 26, 26, ...,  4,  4,  4],
+       [26, 26, 26, ...,  4,  4,  4],
+       [26, 26, 26, ...,  4,  4,  4],
+       ...,
+       [17, 17, 17, ..., 30, 30, 30],
+       [17, 17, 17, ..., 30, 30, 30],
+       [17, 17, 17, ..., 30, 30, 30]], dtype=uint8)
+```
 
 ## 3-  Deployment to TorchServe
 
