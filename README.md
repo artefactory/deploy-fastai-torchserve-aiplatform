@@ -74,6 +74,8 @@ pred_fastai
 (Category tensor(1), tensor(1), tensor([0.0036, 0.9964]))
 ```
 
+Once you got the model weights, put the .pth file in model/text or model/image.
+
 #### Image version
 ```python
 from fastai.vision.all import get_c
