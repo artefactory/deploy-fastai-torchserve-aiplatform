@@ -15,7 +15,7 @@ COPY requirements.txt /home/model-server/
 RUN pip install --upgrade pip
 RUN pip install -r /home/model-server/requirements.txt
 
-COPY torch_serve/text/handler.py torch_serve/text/config.py torch_serve/text/vocab.json /home/model-server/
+ADD torch_serve/ /home/model-server/torch_serve/
 
 COPY model/text/fastai_cls_weights.pth /home/model-server/
 
@@ -23,8 +23,8 @@ RUN torch-model-archiver \
   --model-name=fastai_model \
   --version=1.0 \
   --serialized-file=/home/model-server/fastai_cls_weights.pth \
-  --extra-files=/home/model-server/config.py,/home/model-server/vocab.json \
-  --handler=/home/model-server/handler.py \
+  --extra-files=/home/model-server/torch_serve/text/config.py,/home/model-server/torch_serve/text/vocab.json \
+  --handler=/home/model-server/torch_serve/text/handler.py \
   --export-path=/home/model-server/model-store/
 
 

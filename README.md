@@ -281,9 +281,37 @@ gcloud beta artifacts repositories create $ARTIFACT_REGISTRY_NAME \
  --repository-format=docker \
  --location=$REGION
  ```
-3. Create AI Platform version model using the docker image of the torchserve API package.
 ```bash
-gcloud beta ai-platform versions create $VERSION_NAME  --region=$REGION --model=$MODEL_NAME   --machine-type=n1-standard-4 --image=$DOCKER_IMAGE_PATH  --ports=$PORT   --health-route=$HEALTH_ROUTE   --predict-route=$PREDICT_ROUTE
+ docker build -t $REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_NAME/$DOCKER_NAME:$DOCKER_TAG . -f TextDockerfile
+```
+```bash
+ docker push $REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_NAME/$DOCKER_NAME:$DOCKER_TAG
+```
+
+3. [Optional] Run your docker locally and try to send a prediction
+
+```bash
+docker run -d -p 8080:8080 --name local_imdb  $REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_NAME/$DOCKER_NAME:$DOCKER_TAG
+```
+```bash
+curl -X POST -H "Content-Type: application/json" -d '["this was a bad movie"]' 127.0.0.1:8080/predictions/fastai_model
+```
+If everything is working okay, you should receive a response from the server in your console
+```bash
+[
+  {
+    "Categories": "0",
+    "Tensor": [
+      0.9999990463256836,
+      9.371918849865324e-07
+    ]
+  }
+]
+```
+
+4. Create AI Platform version model using the docker image of the torchserve API package.
+```bash
+gcloud beta ai-platform versions create $VERSION_NAME  --region=$REGION --model=$MODEL_NAME --image=$REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REGISTRY_NAME/$DOCKER_NAME:$DOCKER_TAG  --ports=8080   --health-route=/ping   --predict-route=/predictions/fastai_model
 ```
 
 

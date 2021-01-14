@@ -77,14 +77,12 @@ class TextClassifierHandler:
         self.preprocessor = preprocessor
 
     def preprocess(self, data):
-        logger.debug(f"input data : {data}")
         text = data[0].get("data")
         if text is None:
             text = data[0].get("body")
-        logger.info(f"text : {text} of type {type(text)}")
         if not isinstance(text, list):
             text = [text]
-        logger.info(f"text : {text}")
+        logger.info(f"text: {text}")
         text_preprocessed = [self.preprocessor(el) for el in text]
         max_len = find_max_list(text_preprocessed)
         text_preprocessed = [
@@ -132,8 +130,12 @@ def handle(data, context):
     if data is None:
         return None
 
+    logger.info(f"raw data: {data}")
     data = _service.preprocess(data)
+    logger.info(f"preprocessed data: {data}")
     data = _service.inference(data)
+    logger.info(f"infered data: {data}")
     data = _service.postprocess(data)
+    logger.info(f"postprocessed data: {data}")
 
     return data
