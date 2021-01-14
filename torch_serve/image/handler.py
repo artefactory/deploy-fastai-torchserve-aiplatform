@@ -2,17 +2,20 @@ import logging
 import os
 import sys
 
-import numpy as np
-import torch
-from torchvision import transforms
-
-from fastai.vision.learner import create_cnn_model
-from fastai.vision.models import resnet50
-
-from config import CLASSES
-
 sys.path.insert(0, os.path.abspath('.'))
 
+import base64
+import io
+
+import numpy as np
+import torch
+from fastai.vision.learner import create_unet_model
+from fastai.vision.models import resnet50
+from PIL import Image
+from torch.autograd import Variable
+from torchvision import transforms
+
+from config import IMAGE_SIZE, N_CLASSES
 
 logger = logging.getLogger(__name__)
 
@@ -56,49 +59,65 @@ class ImageClassifierHandler:
         logger.debug(serialized_file)
 
         state_dict = torch.load(serialized_file, map_location=self.device)
-        self.model = create_cnn_model(resnet50, len(CLASSES))
+        self.model = create_unet_model(resnet50, N_CLASSES, IMAGE_SIZE)
         self.model.load_state_dict(state_dict)
         self.model.to(self.device)
         self.model.eval()
         logger.debug(f"Model file {serialized_file} loaded successfully")
         self.initialized = True
 
-    def preprocess(self, data):
-        image_tfm = transforms.Compose(
+    @staticmethod    
+    def preprocess(data):
+        """
+        Scales and normalizes a PIL image for an U-net model
+        """
+        image = data[0].get("data")
+        if image is None:
+            image = data[0].get("body")
+
+        image_transform = transforms.Compose(
             [
+                # must be consistent with model training
                 transforms.Resize((96, 128)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                # default statistics from imagenet
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
             ]
         )
+        image = Image.open(io.BytesIO(image)).convert(
+            "RGB"
+        )  # in case of an alpha channel
+        image = image_transform(image).unsqueeze_(0)
+        return image
 
-        x_tensor = image_tfm(data).unsqueeze_(0)
-        return x_tensor
-
-    def inference(self, image, activation=(lambda x: x)):
+    def inference(self, img):
         """
         Predict the chip stack mask of an image using a trained deep learning model.
         """
         logger.info(f"Device on inference is: {self.device}")
         self.model.eval()
-        inputs = torch.autograd.Variable(image).to(self.device)
+        inputs = Variable(img).to(self.device)
         outputs = self.model.forward(inputs)
-        logger.debug(outputs.shape)
-        return activation(outputs)
+        logging.debug(outputs.shape)
+        return outputs
 
     @staticmethod
-    def postprocess(inference_result):
-        result = []
-        for tensor in inference_result:
-            class_assigned = CLASSES[tensor.argmax()]
-            result.append(
-                {
-                    "Categories": str(class_assigned),
-                    "Tensor": tensor.detach().numpy().astype(np.float32).tolist()
-                }
-            )
-        logger.debug(f"result : {result}")
-        return [result]
+    def postprocess(inference_output):
+
+        if torch.cuda.is_available():
+            inference_output = inference_output[0].argmax(dim=0).cpu()
+        else:
+            inference_output = inference_output[0].argmax(dim=0)
+
+        return [
+            {
+                "base64_prediction": base64.b64encode(
+                    inference_output.numpy().astype(np.uint8)
+                ).decode("utf-8")
+            }
+        ]
 
 
 _service = ImageClassifierHandler()

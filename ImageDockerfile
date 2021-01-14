@@ -15,7 +15,7 @@ COPY requirements.txt /home/model-server/
 RUN pip install --upgrade pip
 RUN pip install -r /home/model-server/requirements.txt
 
-COPY torch_serve/text/handler.py torch_serve/text/config.py /home/model-server/
+COPY torch_serve/image/handler.py torch_serve/image/config.py /home/model-server/
 
 COPY model/image/fastai_cls_weights.pth /home/model-server/
 
