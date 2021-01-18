@@ -66,7 +66,7 @@ class ImageClassifierHandler:
         logger.debug(f"Model file {serialized_file} loaded successfully")
         self.initialized = True
 
-    @staticmethod    
+    @staticmethod
     def preprocess(data):
         """
         Scales and normalizes a PIL image for an U-net model
@@ -131,7 +131,10 @@ def handle(data, context):
         return None
 
     data = _service.preprocess(data)
+    logger.info(f"preprocessed data: {data}")
     data = _service.inference(data)
+    logger.info(f"infered data: {data}")
     data = _service.postprocess(data)
+    logger.info(f"postprocessed data: {data}")
 
     return data
